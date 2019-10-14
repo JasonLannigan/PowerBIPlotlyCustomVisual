@@ -1,0 +1,17 @@
+{
+    "version": "1.0.0",
+    "author": {"name":"-","email":"-"},
+    "resources": [
+        {
+            "resourceId": "rId0",
+            "sourceType": 5,
+            "file": "resources/heatmapF9FCD9B455164376836A22CDD09FD608.pbiviz.json"
+        }
+    ],
+    "visual": {"name":"heatmap","displayName":"heatmap","guid":"heatmapF9FCD9B455164376836A22CDD09FD608","visualClassName":"Visual","version":"1.0.0","description":"-","supportUrl":"-","gitHubUrl":"-"},
+    "metadata": {
+        "pbivizjson": {
+            "resourceId": "rId0"
+        }
+    }  
+}
