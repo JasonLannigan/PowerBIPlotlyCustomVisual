@@ -1,17 +1,33 @@
 {
     "dataRoles": [
         {
-            "displayName": "Category Data",
-            "name": "category",
+            "displayName": "Timeline",
+            "name": "timeline",
             "kind": "Grouping"
         },
         {
-            "displayName": "Measure Data",
-            "name": "measure",
+            "displayName": "Processed",
+            "name": "processed",
             "kind": "Measure"
-        }
+        },
+		{
+			"displayName": "SIGNAL",
+			"name": "signal",
+			"kind": "Grouping"
+		}
     ],
     "objects": {
+		"general": {
+            "displayName": "General",
+            "displayNameKey": "formattingGeneral",
+            "properties": {
+                "filter": {
+                    "type": {
+                        "filter": true
+                    }
+                }
+            }
+        },
         "dataPoint": {
             "displayName": "Data colors",
             "properties": {
@@ -47,7 +63,7 @@
                         "fill": {}
                     }
                 },
-                 "fontSize": {
+                "fontSize": {
                     "displayName": "Text Size",
                     "type": {
                         "formatting": {
@@ -62,21 +78,37 @@
         {
             "categorical": {
                 "categories": {
-                    "for": {
-                        "in": "category"
-                    },
-                    "dataReductionAlgorithm": {
-                        "top": {}
+                    "select": [
+                        {
+                            "bind": {
+                                "to": "timeline"
+                            }
+                        },
+						{
+                            "bind": {
+                                "to": "signal"
+                            }
+                        }
+                    ],
+					"dataReductionAlgorithm": {
+                        "top": {
+                            "count": 30000
+                        }
                     }
                 },
                 "values": {
                     "select": [
                         {
-                            "bind": {
-                                "to": "measure"
+                            "for": {
+                                "in": "processed"
                             }
                         }
-                    ]
+                    ],
+                    "dataReductionAlgorithm": {
+                        "top": {
+                            "count": 30000
+                        }
+                    }
                 }
             }
         }

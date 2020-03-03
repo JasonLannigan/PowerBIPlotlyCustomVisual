@@ -1,0 +1,17 @@
+{
+    "version": "1.0.0",
+    "author": {"name":"-","email":"-"},
+    "resources": [
+        {
+            "resourceId": "rId0",
+            "sourceType": 5,
+            "file": "resources/ValidateMultiSignal.pbiviz.json"
+        }
+    ],
+    "visual": {"name":"ValiateMuliSignalPlotlyJS","displayName":"ValiateMuliSignalPlotlyJS","guid":"ValidateMultiSignal","visualClassName":"Visual","version":"1.0.0","description":"-","supportUrl":"-","gitHubUrl":"-"},
+    "metadata": {
+        "pbivizjson": {
+            "resourceId": "rId0"
+        }
+    }  
+}

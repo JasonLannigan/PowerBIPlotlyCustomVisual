@@ -37,8 +37,23 @@ import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 
 import { VisualSettings } from "./settings";
+import * as Plotly from "plotly.js-dist";
+
+export interface IFilter {
+    $schema: string;
+    target: 'UK_DATE_TIME';
+}
+
+
+export interface IBasicFilter extends IFilter {
+    operator: 'In';
+    values: (string | number | boolean)[];
+}
+
+
 export class Visual implements IVisual {
     private target: HTMLElement;
+    private div: HTMLDivElement;
     private updateCount: number;
     private settings: VisualSettings;
     private textNode: Text;
@@ -47,24 +62,177 @@ export class Visual implements IVisual {
         console.log('Visual constructor', options);
         this.target = options.element;
         this.updateCount = 0;
-        if (document) {
-            const new_p: HTMLElement = document.createElement("p");
-            new_p.appendChild(document.createTextNode("Update count:"));
-            const new_em: HTMLElement = document.createElement("em");
-            this.textNode = document.createTextNode(this.updateCount.toString());
-            new_em.appendChild(this.textNode);
-            new_p.appendChild(new_em);
-            this.target.appendChild(new_p);
-        }
+        this.div = document.createElement("div");
+        this.div.setAttribute("id", "myDiv");
+        this.target.appendChild(this.div);
     }
-
+	
+	
     public update(options: VisualUpdateOptions) {
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         console.log('Visual update', options);
-        if (this.textNode) {
-            this.textNode.textContent = (this.updateCount++).toString();
-        }
-    }
+		
+		
+		let xValues = [...(new Set(options.dataViews[0].categorical.categories[0].values))]; //Use DataView Array the first position, and categories array first position.
+        let yValues = options.dataViews[0].categorical.values[0].values;
+		let signalValues = options.dataViews[0].categorical.categories[1].values;
+	
+		let basicFilter = {
+			target: {
+				column: "UK_DATE_TIME"
+			},
+			operator: "In",
+			values: xValues
+		}
+	
+		 
+	var graphDiv: any = document.getElementById('myDiv');	
+	var N = xValues.length
+	var color1 = '#7b3294';
+	var color1Light = '#c2a5cf';
+	var colorX = '#ffa7b5';
+	var colorY = '#fdae61';
+
+		var x = xValues;
+		var y = yValues;
+			    
+
+
+
+		var LineTrace = {
+            x: 1,
+            y: 2,
+            mode: 'markers',
+			marker: {size: 5},
+            type: 'scatter',
+			transforms: [{
+				type: 'groupby',
+				groups: signalValues
+			}]
+          };
+		  
+        var datag = [LineTrace];
+		
+		var selectorOptions = {
+			buttons: [{
+				step: 'month',
+				stepmode: 'backward',
+				count: 1,
+				label: 'This Month'
+			}, {
+				step: 'day',
+				stepmode: 'backward',
+				count: 7,
+				label: 'This Week'
+			}, {
+				step: 'day',
+				stepmode: 'backward',
+				count: 2,
+				label: 'Yesterday'
+			}, {
+				step: 'all',
+			}],
+		};
+		
+		var layoutg = {
+			autosize: true,
+			margin: {
+				l: 60,
+				r: 50,
+				b: 35,
+				t: 5,
+				pad: 4
+				},
+			xaxis: {
+				rangeselector: selectorOptions,
+				//rangeslider: {},
+				//title: {
+					//text: 'Date/Time',
+					//},
+			},
+			yaxis: {
+				title: {
+					text: 'Flow (l/s)',
+				},
+				
+			},
+		};
+
+	Plotly.newPlot('myDiv', datag, layoutg);
+	
+	Plotly.plot(graphDiv, [{
+		type: 'scatter',
+		mode: 'markers',
+		x: x,
+		y: y,
+		
+		hovertemplate: '<b>Time Stamp</b>: %{x}' +
+						'<br><b>Flow</b>: %{y}<br>',
+		//name: signalValues,
+		marker: {color: color1, size: 10},
+			transforms: [{
+				type: 'groupby',
+				groups: signalValues
+			}]
+		//xaxis: 'x',
+		//yaxis: 'y',
+		//name: 'random data',
+		
+	}]);
+
+	graphDiv.on('plotly_selected', function(eventData) {
+		var x = [];
+		var y = [];
+  
+		var colors = [];
+		console.log(colors);
+		//for(var i = 0; i < N; i++) colors.push(color1Light);
+  
+		console.log(eventData.points)
+  
+		eventData.points.forEach(function(pt) {
+			x.push(pt.x);
+			y.push(pt.y);
+			colors[pt.pointNumber] = color1;
+		});
+  
+		//Plotly.restyle(graphDiv, {
+			//x: [x, y],
+			//xbins: {}
+		//}, //[1, 2]
+		//);
+		console.log('After select'+x.length);
+		console.log('After select'+y.length);
+		console.log(x);
+		console.log(y);
+		
+  
+		Plotly.restyle(graphDiv, 'marker.color', [colors], [0]);
+		
+		this.filterValues(eventData.points);
+		});
+	}
+
+		
+
+	private filterValues(x) {
+		
+				
+				
+			let categories: DataViewCategoricalColumn = this.dataView.categorical.categories[0];
+
+			let target: IFilterTarget = {
+				table: categories.source.CALENDAR.substr(0, categories.source.CALENDAR.indexOf('.')), // Yourtable
+				column: categories.source.UK_DATE_TIME  //Datetime
+			};
+
+			let values = x; //
+
+			let filter: IBasicFilter = new window['powerbi-models'].BasicFilter(target, "In", values);
+
+			IVisualHost.applyJsonFilter(filter, "general", "filter", FilterAction.merge);
+		}
+
 
     private static parseSettings(dataView: DataView): VisualSettings {
         return <VisualSettings>VisualSettings.parse(dataView);
@@ -78,19 +246,5 @@ export class Visual implements IVisual {
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
         return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
     }
-	public generatePlotlyVisual(){
-            
-               
-          var trace={x:[3,9,8,10,4,6,5],y:[5,7,6,7,8,9,8],type:"scatter"};
-		  var trace1={x:[3,4,1,6,8,9,5],y:[4,2,5,2,1,7,3],type:"scatter"};
-		  var data = [trace,trace1];
-		  var layout = {title : "Simple JavaScript Graph"};
-		  Plotly.plot(
-	      'plotly_div',
-		  data,
-		  layout)
-    
-        }
-
-
 }
+
