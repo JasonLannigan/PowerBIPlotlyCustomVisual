@@ -14,7 +14,12 @@
 			"displayName": "SIGNAL",
 			"name": "signal",
 			"kind": "Grouping"
-		}
+        },
+        {
+            "displayName": "PROCESSEDREASON",
+            "name": "processedreason",
+            "kind": "Grouping"
+        }
     ],
     "objects": {
 		"general": {
@@ -87,6 +92,11 @@
 						{
                             "bind": {
                                 "to": "signal"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "processedreason"
                             }
                         }
                     ],

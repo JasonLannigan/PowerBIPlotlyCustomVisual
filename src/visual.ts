@@ -27,18 +27,32 @@
 
 import "core-js/stable";
 import "./../style/visual.less";
+
 import powerbi from "powerbi-visuals-api";
+
+import {IFilterTarget, IFilterColumnTarget, IBasicFilter, BasicFilter} from "powerbi-models";
+
+import DataViewCategoricalColumn = powerbi.DataViewCategoricalColumn;
+import DataView = powerbi.DataView;
+import FilterAction = powerbi.FilterAction;
+
+import IVisualHost = powerbi.extensibility.IVisualHost;
+
+
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
+import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 import VisualObjectInstance = powerbi.VisualObjectInstance;
-import DataView = powerbi.DataView;
-import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+
+import { interactivityFilterService } from "powerbi-visuals-utils-interactivityutils";
+import extractFilterColumnTarget = interactivityFilterService.extractFilterColumnTarget;
+
 
 import { VisualSettings } from "./settings";
 import * as Plotly from "plotly.js-dist";
-
+/*
 export interface IFilter {
     $schema: string;
     target: 'UK_DATE_TIME';
@@ -49,18 +63,21 @@ export interface IBasicFilter extends IFilter {
     operator: 'In';
     values: (string | number | boolean)[];
 }
-
+*/
 
 export class Visual implements IVisual {
     private target: HTMLElement;
     private div: HTMLDivElement;
     private updateCount: number;
     private settings: VisualSettings;
-    private textNode: Text;
+	private textNode: Text;
+	private host: powerbi.extensibility.visual.IVisualHost;
+	private columnTarget: IFilterColumnTarget;
 
     constructor(options: VisualConstructorOptions) {
         console.log('Visual constructor', options);
-        this.target = options.element;
+		this.target = options.element;
+		this.host = options.host;
         this.updateCount = 0;
         this.div = document.createElement("div");
         this.div.setAttribute("id", "myDiv");
@@ -70,13 +87,17 @@ export class Visual implements IVisual {
 	
     public update(options: VisualUpdateOptions) {
         this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
-        console.log('Visual update', options);
+		console.log('Visual update', options);
+		
+		let dataview = options.dataViews[0];
 		
 		
-		let xValues = [...(new Set(options.dataViews[0].categorical.categories[0].values))]; //Use DataView Array the first position, and categories array first position.
-        let yValues = options.dataViews[0].categorical.values[0].values;
-		let signalValues = options.dataViews[0].categorical.categories[1].values;
+		let xValues = [...(new Set(dataview.categorical.categories[0].values))]; //Use DataView Array the first position, and categories array first position.
+        let yValues = dataview.categorical.values[0].values;
+		let signalValues = dataview.categorical.categories[1].values;
+		let processedReason = dataview.categorical.categories[2].values;
 	
+		/*
 		let basicFilter = {
 			target: {
 				column: "UK_DATE_TIME"
@@ -84,6 +105,21 @@ export class Visual implements IVisual {
 			operator: "In",
 			values: xValues
 		}
+		*/
+
+		
+		let categories: DataViewCategoricalColumn = dataview.categorical.categories[0];
+		this.columnTarget = extractFilterColumnTarget(dataview.categorical.categories[0]);
+		
+
+		/*
+		let target: IFilterTarget = {
+			table: categories.source.CALENDAR.substr(0, categories.source.CALENDAR.indexOf('.')), // Yourtable
+			column: categories.source.UK_DATE_TIME  //Datetime
+		};
+		*/
+
+		let values = x; //
 	
 		 
 	var graphDiv: any = document.getElementById('myDiv');	
@@ -92,6 +128,7 @@ export class Visual implements IVisual {
 	var color1Light = '#c2a5cf';
 	var colorX = '#ffa7b5';
 	var colorY = '#fdae61';
+
 
 		var x = xValues;
 		var y = yValues;
@@ -168,19 +205,44 @@ export class Visual implements IVisual {
 		
 		hovertemplate: '<b>Time Stamp</b>: %{x}' +
 						'<br><b>Flow</b>: %{y}<br>',
+		showlegend: false,
 		//name: signalValues,
-		marker: {color: color1, size: 10},
-			transforms: [{
-				type: 'groupby',
-				groups: signalValues
-			}]
-		//xaxis: 'x',
-		//yaxis: 'y',
-		//name: 'random data',
-		
-	}]);
+		//marker: {color: color1, size: 10},
+		transforms: [{
+			type: 'groupby',
+			groups: signalValues,
+			name: 'Signal',
+			},{ 
+			type: 'groupby',
+			groups: processedReason,
+			styles: [
+				{target: 'CONSTANT', value: {marker: {color: 'red', size: 7, line:{color: 'black', width: 0.9}}}},
+				{target: 'MISSING', value: {marker: {color: 'rgb(255,20,147)', size: 7, line:{color: 'black', width: 0.9}}}},
+				{target: 'OUTWITH ENVELOPE', value: {marker: {color: 'rgb(139,0,0)', size: 7, line:{color: 'black', width: 0.9}}}},
+				{target: 'VALID', value: {marker: {color: 'rgb(78,288,78)', size: 5, line:{color: 'black', width: 0.9}}}},
+				{target: 'ZERO', value: {marker: {color: 'red', size: 7, line:{color: 'black', width: 0.9}}}},
+			],
+			
+			}
+		]		
+	},{
+			
+		x: x,
+		y: y,
+		name: 'Signal',
+		type: 'scatter',
+		mode: 'lines',
+		showlegend: false,
+		line: {width: 1.4, dash: 'dash', color: 'black'},
+		transforms: [{
+			type: 'groupby',
+			groups: signalValues,
+			name: 'Signal',
+		}]
+	  
+  }]);
 
-	graphDiv.on('plotly_selected', function(eventData) {
+	graphDiv.on('plotly_selected', (eventData) => {
 		var x = [];
 		var y = [];
   
@@ -205,35 +267,41 @@ export class Visual implements IVisual {
 		console.log('After select'+y.length);
 		console.log(x);
 		console.log(y);
+		console.log("This is the processed reason"+processedReason);
 		
   
 		Plotly.restyle(graphDiv, 'marker.color', [colors], [0]);
 		
+
 		this.filterValues(eventData.points);
 		});
 	}
 
 		
 
-	private filterValues(x) {
-		
-				
-				
-			let categories: DataViewCategoricalColumn = this.dataView.categorical.categories[0];
+	private filterValues(datapoints: any) {
+			debugger;
 
-			let target: IFilterTarget = {
-				table: categories.source.CALENDAR.substr(0, categories.source.CALENDAR.indexOf('.')), // Yourtable
-				column: categories.source.UK_DATE_TIME  //Datetime
+			let selected = datapoints[0].data.selectedpoints.map(index => datapoints[0].data.x[index])
+
+
+			console.log("selected dates are", selected);
+			
+			let filter: IBasicFilter = {
+				$schema: "http://powerbi.com/product/schema#basic",
+				...(new BasicFilter(
+					this.columnTarget, 
+					"In",
+					selected
+				))
 			};
 
-			let values = x; //
 
-			let filter: IBasicFilter = new window['powerbi-models'].BasicFilter(target, "In", values);
-
-			IVisualHost.applyJsonFilter(filter, "general", "filter", FilterAction.merge);
+			this.host.applyJsonFilter(filter, "general", "filter", FilterAction.merge);
 		}
 
-
+	
+	
     private static parseSettings(dataView: DataView): VisualSettings {
         return <VisualSettings>VisualSettings.parse(dataView);
     }
